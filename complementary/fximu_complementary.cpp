@@ -7,7 +7,8 @@
 #include "fximu_complementary.h"
 #include "parameters.h"
 
-// TODO: research LPF and HPF on both gyro and accel
+// TODO: RESEARCH: LPF and HPF on both gyro and accel
+// TODO: RESEARCH: how to utilize calibration param `magnetic field strength`
 
 #ifndef HW_VERSION_CODE
   #error PLEASE SELECT HW_VERSION_CODE in parameters.h
@@ -30,12 +31,7 @@ int main(void) {
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
     GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_2);
 
-    #if HW_VERSION_CODE == FXIMU2C
     GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-    #endif
-    #if HW_VERSION_CODE == FXIMU2B
-    GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
-    #endif
 
     GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_2);
     GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_2);
@@ -47,12 +43,7 @@ int main(void) {
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
     GPIOPinTypeGPIOInput(GPIO_PORTC_BASE, GPIO_PIN_4);
 
-    #if HW_VERSION_CODE == FXIMU2C
     GPIOPadConfigSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-    #endif
-    #if HW_VERSION_CODE == FXIMU2B
-    GPIOPadConfigSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
-    #endif
 
     GPIOIntDisable(GPIO_PORTC_BASE, GPIO_PIN_4);
     GPIOIntClear(GPIO_PORTC_BASE, GPIO_PIN_4);
@@ -110,6 +101,7 @@ int main(void) {
             // handle parameters
             handle_parameters(nh);
             print_defaults(nh);
+            print_status(nh);
 
             // reset sequences
             read_sequence = 1;
@@ -123,40 +115,14 @@ int main(void) {
                 filter_.setDoBiasEstimation(p_bias_estimation);
                 filter_.setDoAdaptiveGain(p_adaptive_gain);
 
-                if(!filter_.setGainAcc(p_gain_acc)) {
-                    sprintf(loginfo_buffer, "set gain acc failed");
-                    nh.loginfo(loginfo_buffer);
-                }
-
-                if(!filter_.setGainMag(p_gain_mag)) {
-                    sprintf(loginfo_buffer, "set gain mag failed");
-                    nh.loginfo(loginfo_buffer);
-                }
-
-                if(!filter_.setBiasAlpha(p_bias_alpha)) {
-                    sprintf(loginfo_buffer, "set gain bias alpha failed");
-                    nh.loginfo(loginfo_buffer);
-                }
-
-                if(!filter_.setKAngularVelocityThreshold(p_kAngularVelocityThreshold)) {
-                    sprintf(loginfo_buffer, "set kAngularVelocityThresholdfailed");
-                    nh.loginfo(loginfo_buffer);
-                }
-
-                if(!filter_.setKAccelerationThreshold(p_kAccelerationThreshold)) {
-                    sprintf(loginfo_buffer, "set kAccelerationThreshold failed");
-                    nh.loginfo(loginfo_buffer);
-                }
-
-                if(!filter_.setKDeltaAngularVelocityThreshold(p_kDeltaAngularVelocityThreshold)) {
-                    sprintf(loginfo_buffer, "set kDeltaAngularVelocityThreshold failed");
-                    nh.loginfo(loginfo_buffer);
-                }
-
-                if(!filter_.setSteadyLimit(p_steady_limit)) {
-                    sprintf(loginfo_buffer, "set steady limit failed");
-                    nh.loginfo(loginfo_buffer);
-                }
+                // notice, each statement below returns success state
+                filter_.setGainAcc(p_gain_acc);
+                filter_.setGainMag(p_gain_mag);
+                filter_.setBiasAlpha(p_bias_alpha);
+                filter_.setKAngularVelocityThreshold(p_kAngularVelocityThreshold);
+                filter_.setKAccelerationThreshold(p_kAccelerationThreshold);
+                filter_.setKDeltaAngularVelocityThreshold(p_kDeltaAngularVelocityThreshold);
+                filter_.setSteadyLimit(p_steady_limit);
 
             } else {
                 array.data_length = 9;
@@ -172,15 +138,34 @@ int main(void) {
 
         if(!nh_connected && nh_prev_state) {
             nh_prev_state = false;
-            MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);
+            green_led(false);
+            red_led(false);
             nh.spinOnce();
             nh.getHardware()->delay(10);
+            continue;
+        }
+
+        // if system disabled, red led will long blink, and rest of the loop will not execute
+        if(imu_disabled) {
+            red_led(true);
+            MAP_SysCtlDelay(13333333UL);
+            red_led(false);
+            MAP_SysCtlDelay(13333333UL);
+            nh.spinOnce();
             continue;
         }
 
         if(data_ready) {
 
             currentTime = nh.now();
+
+            if(nh_connected) {
+                if(filter_.getSteadyState() && p_calibration_mode != 1) {
+                    green_led(true);
+                } else {
+                    red_led(true);
+                }
+            }
 
             if(!initialized_filter_ & p_calibration_mode != 1) {
                 markedTime = currentTime;
@@ -191,9 +176,7 @@ int main(void) {
             double dt = currentTime.toSec() - markedTime.toSec();
             markedTime = currentTime;
 
-            // TODO: magnetic field strength. research this.
-            // TODO: string check base_imu_link, etc.
-
+            // updates filter with sensor values if not in calibration
             if(p_calibration_mode != 1) {
 
                 // store gyro values
@@ -230,6 +213,7 @@ int main(void) {
 
             }
 
+            // output values, only if connected
             if(read_sequence % p_output_rate_divider == 0) {
 
                 if(p_calibration_mode != 1) {
@@ -316,27 +300,37 @@ int main(void) {
                     imu_msg.orientation_covariance[7] = 0;
                     imu_msg.orientation_covariance[8] = 0.0025;
 
-                    // publish objects
-                    pub_imu_msg.publish(&imu_msg);
-                    pub_mag_msg.publish(&mag_msg);
+                    if(nh_connected) {
 
-                    if(pub_sequence % 1024 == 0) {
+                        // publish imu and mag messages, if connected
+                        pub_imu_msg.publish(&imu_msg);
+                        pub_mag_msg.publish(&mag_msg);
 
-                        sprintf(loginfo_buffer, "gyro biases: %.3f, %.3f, %.3f", filter_.getAngularVelocityBiasX(), filter_.getAngularVelocityBiasY(), filter_.getAngularVelocityBiasZ());
-                        nh.loginfo(loginfo_buffer);
-
-                        sprintf(loginfo_buffer, "accel gain: %.3f", filter_.getGain());
-                        nh.loginfo(loginfo_buffer);
-
+                        // report gyro biases and accel gain
+                        if(pub_sequence % 4096 == 0) {
+                            sprintf(loginfo_buffer, "G: %.3f, %.3f, %.3f, A: %.3f ", filter_.getAngularVelocityBiasX(), filter_.getAngularVelocityBiasY(), filter_.getAngularVelocityBiasZ(), filter_.getGain());
+                            nh.loginfo(loginfo_buffer);
+                        }
                     }
 
                     pub_sequence++;
 
                 } else {
-                    // publish array containing raw sensor values
-                    int16_t sensor_data[9] = {accelRD.x, accelRD.y, accelRD.z, gyroRD.x, gyroRD.y, gyroRD.z, magRD.x, magRD.y, magRD.z};
-                    array.data = sensor_data;
-                    pub_array.publish(&array);
+
+                    if(nh_connected) {
+                        // publish array containing raw sensor values
+                        raw_sensor_data[0] = accelRD.x;
+                        raw_sensor_data[0] = accelRD.y;
+                        raw_sensor_data[0] = accelRD.z;
+                        raw_sensor_data[0] = gyroRD.x;
+                        raw_sensor_data[0] = gyroRD.y;
+                        raw_sensor_data[0] = gyroRD.z;
+                        raw_sensor_data[0] = magRD.x;
+                        raw_sensor_data[0] = magRD.y;
+                        raw_sensor_data[0] = magRD.z;
+                        array.data = raw_sensor_data;
+                        pub_array.publish(&array);
+                    }
 
                 }
 
@@ -344,12 +338,8 @@ int main(void) {
 
             }
 
-            if(nh_connected && filter_.getSteadyState() && p_calibration_mode != 1) {
-                MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);
-            } else {
-                MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);
-            }
-
+            red_led(false);
+            green_led(false);
             read_sequence++;
             data_ready = false;
 

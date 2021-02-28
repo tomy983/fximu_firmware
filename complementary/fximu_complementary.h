@@ -47,6 +47,8 @@ ros::NodeHandle nh;
 ros::Time markedTime;
 ros::Time currentTime;
 
+int16_t raw_sensor_data[9];
+
 sensor_msgs::Imu imu_msg;
 sensor_msgs::MagneticField mag_msg;
 std_msgs::Int16MultiArray array;
@@ -114,7 +116,12 @@ void init_system() {
 
     // Enable eeprom
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
-    EEPROMInit();
+
+    // Try 3 times to enable eeprom, if not fail safe
+    for(int i=0; i<3; i++) {
+        if(EEPROMInit()==EEPROM_INIT_OK) { eeprom_init = true; break; }
+        MAP_SysCtlDelay(13333UL);
+    }
 
     // unlock PF0, after enabling GPIOF
     HWREG(GPIO_PORTF_BASE+GPIO_O_LOCK) = GPIO_LOCK_KEY;
@@ -123,17 +130,18 @@ void init_system() {
     // configure port f
     MAP_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
 
-    // blink led 0
+    // blink green led
     MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);
     fx_delay();
     MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);
 
-    #if HW_VERSION_CODE == FXIMU2C
-    // blink led 1
+    // initialize raw sensor data
+    for(int i=0; i<9; i++) { raw_sensor_data[i] = 0; }
+
+    // blink red led
     MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);
     fx_delay();
     MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0);
-    #endif
 
 }
 
@@ -159,6 +167,22 @@ void init_I2C0(void) {
     GPIOPinTypeI2C(GPIO_PORTB_BASE, GPIO_PIN_3);
     I2CMasterInitExpClk(I2C0_BASE, SysCtlClockGet(), true);
     HWREG(I2C0_BASE + I2C_O_FIFOCTL) = 80008000;
+}
+
+void red_led(bool on) {
+    if(on) {
+        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);
+    } else {
+        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0);
+    }
+}
+
+void green_led(bool on) {
+    if(on) {
+        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);
+    } else {
+        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);
+    }
 }
 
 void init_sensors() {

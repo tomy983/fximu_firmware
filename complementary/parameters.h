@@ -1,7 +1,6 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
-//#define HW_VERSION_CODE FXIMU2B
 #define HW_VERSION_CODE FXIMU2C
 
 #include <stdio.h>
@@ -11,6 +10,8 @@ char loginfo_buffer[100];
 bool parameters[PARAM_SIZE];
 
 int p_calibration_mode;
+bool imu_disabled = false;
+bool eeprom_init = false;
 
 float p_gain_acc = 0.02;
 float p_gain_mag = 0.01;
@@ -80,6 +81,8 @@ void read_eeprom_string(uint32_t addr, char **link_ptr) {
 
 void read_defaults() {
 
+    if(!eeprom_init) { return; }
+
     p_gain_acc = read_eeprom_float(0x00);
     p_gain_mag = read_eeprom_float(0x04);
     p_bias_alpha = read_eeprom_float(0x08);
@@ -119,6 +122,8 @@ void read_defaults() {
 }
 
 void write_defaults() {
+
+    if(!eeprom_init) { return; }
 
     write_eeprom_float(0x00, p_gain_acc);
     write_eeprom_float(0x04, p_gain_mag);
@@ -163,7 +168,7 @@ void spin_once(ros::NodeHandle &nh) {
     nh.getHardware()->delay(10);
 }
 
-void reset_parameters() {
+void reset_filter_parameters() {
 
     p_gain_acc = 0.02;
     p_gain_mag = 0.01;
@@ -187,6 +192,9 @@ void reset_parameters() {
     mag_softiron_matrix[2][1] = 0.0;
     mag_softiron_matrix[2][2] = 0.0;
 
+    imu_disabled = false;
+
+    /*
     p_sensor_read_rate = 400;
     p_output_rate_divider = 8;
     p_adaptive_gain = true;
@@ -197,14 +205,13 @@ void reset_parameters() {
     p_steady_limit = 32;
     p_world_frame = 0;
     p_use_mag = 1;
-
-    // TODO: imu_link, mag_link
+    */
 
 }
 
 void print_defaults(ros::NodeHandle &nh) {
 
-    sprintf(loginfo_buffer, "firmware revision: 17July2020");
+    sprintf(loginfo_buffer, "Firmware Revision: 01MARCH2021");
     nh.loginfo(loginfo_buffer);
 
     sprintf(loginfo_buffer, "sensor_read_rate: %d", p_sensor_read_rate);
@@ -215,10 +222,10 @@ void print_defaults(ros::NodeHandle &nh) {
 
     spin_once(nh);
 
-    sprintf(loginfo_buffer, "adaptive_gain: %s", p_adaptive_gain ? "true" : "false");
+    sprintf(loginfo_buffer, "adaptive_gain: %d", p_adaptive_gain);
     nh.loginfo(loginfo_buffer);
 
-    sprintf(loginfo_buffer, "bias_estimation: %s", p_bias_estimation ? "true" : "false");
+    sprintf(loginfo_buffer, "bias_estimation: %d", p_bias_estimation);
     nh.loginfo(loginfo_buffer);
 
     spin_once(nh);
@@ -253,7 +260,7 @@ void print_defaults(ros::NodeHandle &nh) {
 
     spin_once(nh);
 
-    sprintf(loginfo_buffer, "world_frame: %s", p_world_frame ? "NWU" : "ENU");
+    sprintf(loginfo_buffer, "world_frame: %d", p_world_frame);
     nh.loginfo(loginfo_buffer);
 
     sprintf(loginfo_buffer, "use_mag: %d", p_use_mag);
@@ -287,10 +294,21 @@ void print_defaults(ros::NodeHandle &nh) {
 
     spin_once(nh);
 
-    sprintf(loginfo_buffer, "soft_iron_matrix[2]: %.3f, %.3f, %.3f", mag_softiron_matrix[2][0], mag_softiron_matrix[2][1], mag_softiron_matrix[2][2]);
-    nh.loginfo(loginfo_buffer);
+}
 
-    spin_once(nh);
+void print_status(ros::NodeHandle &nh) {
+
+    if(!eeprom_init) {
+        sprintf(loginfo_buffer, "EEPROM Init Failure");
+        nh.loginfo(loginfo_buffer);
+        spin_once(nh);
+    }
+
+    if(imu_disabled) {
+        printf(loginfo_buffer, "Parameter Load Failure. IMU DISABLED");
+        nh.loginfo(loginfo_buffer);
+        spin_once(nh);
+    }
 
 }
 
@@ -317,14 +335,14 @@ void handle_parameters(ros::NodeHandle &nh) {
         // use eeprom defaults
         read_defaults();
 
-        sprintf(loginfo_buffer, "fximu parameters read from eeprom");
+        sprintf(loginfo_buffer, "FXIMU Parameters read from EEPROM");
         nh.loginfo(loginfo_buffer);
         spin_once(nh);
 
     } else if(p_calibration_mode == 1) {
 
         // calibration mode
-        reset_parameters();
+        reset_filter_parameters();
 
     } else if(p_calibration_mode == 2 || p_calibration_mode == 3) {
 
@@ -381,22 +399,24 @@ void handle_parameters(ros::NodeHandle &nh) {
 
         for(int i=0; i<PARAM_SIZE; i++) {
             if(!parameters[i]) {
-                sprintf(loginfo_buffer, "fximu parameter for index: %d failed", i);
+                sprintf(loginfo_buffer, "FXIMU Parameter for Index=%d failed", i);
                 nh.loginfo(loginfo_buffer);
                 success = false;
             }
         }
 
         if(success && p_calibration_mode == 2) {
-            sprintf(loginfo_buffer, "fximu parameters read from rosparam");
+            sprintf(loginfo_buffer, "FXIMU Parameters read from ROS");
             nh.loginfo(loginfo_buffer);
         }
 
         if(success && p_calibration_mode == 3) {
             write_defaults();
-            sprintf(loginfo_buffer, "fximu parameters written to eeprom");
+            sprintf(loginfo_buffer, "FXIMU Parameters written to EEPROM");
             nh.loginfo(loginfo_buffer);
         }
+
+        if(!success) { imu_disabled = true; }
 
         spin_once(nh);
 

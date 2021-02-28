@@ -25,7 +25,7 @@ void AGInit(uint32_t ui32WorkerAddress, tAccelRange tAFSR, tOutputDataRate tODR)
 
     // high resolution
     ui8Register[0] = 0x02;
-    I2CAGReceive(ui32WorkerAddress, AG_CTRL_REG2, ui8Register, sizeof(ui8Register));
+    I2CAGSend(ui32WorkerAddress, AG_CTRL_REG2, ui8Register, sizeof(ui8Register));
 
     // interrupt configuration, active low, open drain
     // active low
@@ -50,7 +50,6 @@ void AGInit(uint32_t ui32WorkerAddress, tAccelRange tAFSR, tOutputDataRate tODR)
     I2CAGReceive(ui32WorkerAddress, AG_M_CTRL_REG1, ui8Register, sizeof(ui8Register));
     ui8Register[0] &= ~(0B00011111);
     ui8Register[0] |= ACCEL_AND_MAG;
-    //ui8Register[0] |= ACCEL_ONLY;
     I2CAGSend(ui32WorkerAddress, AG_M_CTRL_REG1, ui8Register, sizeof(ui8Register));
 
     // Jump to reg 0x33 after reading 0x06
