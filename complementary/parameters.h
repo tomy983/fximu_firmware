@@ -311,7 +311,7 @@ void print_status(ros::NodeHandle &nh) {
 
 }
 
-bool handle_parameters(ros::NodeHandle &nh) {
+void handle_parameters(ros::NodeHandle &nh) {
 
     // set all to false
     for(int i=0; i<PARAM_SIZE; i++) {
@@ -329,98 +329,118 @@ bool handle_parameters(ros::NodeHandle &nh) {
     nh.loginfo(loginfo_buffer);
     spin_once(nh);
 
-    if(p_calibration_mode == 0) {
+    switch(p_calibration_mode) {
 
-        // use eeprom defaults
-        read_defaults();
+        case 0:
 
-        sprintf(loginfo_buffer, "FXIMU Parameters read from EEPROM");
-        nh.loginfo(loginfo_buffer);
-        spin_once(nh);
+            // use eeprom defaults
+            read_defaults();
 
-    } else if(p_calibration_mode == 1) {
+            parameters_ok = true;
 
-        // calibration mode
-        reset_filter_parameters();
+            sprintf(loginfo_buffer, "FXIMU Parameters read from EEPROM");
+            nh.loginfo(loginfo_buffer);
+            spin_once(nh);
 
-    } else if(p_calibration_mode == 2 || p_calibration_mode == 3) {
+            break;
 
-        parameters[1] = nh.getParam("/params/imu/sensor_read_rate", (int*) &p_sensor_read_rate, 1, 1000);
-        parameters[2] = nh.getParam("/params/imu/output_rate_divider", (int*) &p_output_rate_divider, 1, 1000);
-        spin_once(nh);
+        case 1:
 
-        parameters[3] = nh.getParam("/params/imu/adaptive_gain", (bool*) &p_adaptive_gain, 1, 1000);
-        parameters[4] = nh.getParam("/params/imu/bias_estimation", (bool*) &p_bias_estimation, 1, 1000);
-        spin_once(nh);
+            // calibration mode
+            reset_filter_parameters();
 
-        parameters[5] = nh.getParam("/params/imu/gain_mag", (float*) &p_gain_mag, 1, 1000);
-        parameters[6] = nh.getParam("/params/imu/gain_acc", (float*) &p_gain_acc, 1, 1000);
-        parameters[7] = nh.getParam("/params/imu/bias_alpha", (float*) &p_bias_alpha, 1, 1000);
-        spin_once(nh);
+            parameters_ok = true;
 
-        parameters[8] = nh.getParam("/params/imu/imu_frame_id", imu_link_ptr, 1, 1000);
-        parameters[9] = nh.getParam("/params/imu/mag_frame_id", mag_link_ptr, 1, 1000);
-        spin_once(nh);
+            break;
 
-        parameters[10] = nh.getParam("/params/imu/gfsr", (int*) &p_gfsr, 1, 1000);
-        parameters[11] = nh.getParam("/params/imu/afsr", (int*) &p_afsr, 1, 1000);
-        spin_once(nh);
+        default:
 
-        parameters[12] = nh.getParam("/params/imu/steady_limit", (int*) &p_steady_limit, 1, 1000);
-        spin_once(nh);
+            parameters[1] = nh.getParam("/params/imu/sensor_read_rate", (int*) &p_sensor_read_rate, 1, 1000);
+            parameters[2] = nh.getParam("/params/imu/output_rate_divider", (int*) &p_output_rate_divider, 1, 1000);
+            spin_once(nh);
 
-        parameters[13] = nh.getParam("/params/imu/world_frame", (int*) &p_world_frame, 1, 1000);
-        spin_once(nh);
+            parameters[3] = nh.getParam("/params/imu/adaptive_gain", (bool*) &p_adaptive_gain, 1, 1000);
+            parameters[4] = nh.getParam("/params/imu/bias_estimation", (bool*) &p_bias_estimation, 1, 1000);
+            spin_once(nh);
 
-        parameters[14] = nh.getParam("/params/imu/use_mag", (int*) &p_use_mag, 1, 1000);
-        spin_once(nh);
+            parameters[5] = nh.getParam("/params/imu/gain_mag", (float*) &p_gain_mag, 1, 1000);
+            parameters[6] = nh.getParam("/params/imu/gain_acc", (float*) &p_gain_acc, 1, 1000);
+            parameters[7] = nh.getParam("/params/imu/bias_alpha", (float*) &p_bias_alpha, 1, 1000);
+            spin_once(nh);
 
-        parameters[15] = nh.getParam("/params/imu/kAngularVelocityThreshold", (float*) &p_kAngularVelocityThreshold, 1, 1000);
-        parameters[16] = nh.getParam("/params/imu/kAccelerationThreshold", (float*) &p_kAccelerationThreshold, 1, 1000);
-        parameters[17] = nh.getParam("/params/imu/kDeltaAngularVelocityThreshold", (float*) &p_kDeltaAngularVelocityThreshold, 1, 1000);
-        spin_once(nh);
+            parameters[8] = nh.getParam("/params/imu/imu_frame_id", imu_link_ptr, 1, 1000);
+            parameters[9] = nh.getParam("/params/imu/mag_frame_id", mag_link_ptr, 1, 1000);
+            spin_once(nh);
 
-        parameters[18] = nh.getParam("/params/imu/mag_offset_x", (float*) &mag_offsets[0], 1, 1000);
-        parameters[19] = nh.getParam("/params/imu/mag_offset_y", (float*) &mag_offsets[1], 1, 1000);
-        parameters[20] = nh.getParam("/params/imu/mag_offset_z", (float*) &mag_offsets[2], 1, 1000);
-        spin_once(nh);
+            parameters[10] = nh.getParam("/params/imu/gfsr", (int*) &p_gfsr, 1, 1000);
+            parameters[11] = nh.getParam("/params/imu/afsr", (int*) &p_afsr, 1, 1000);
+            spin_once(nh);
 
-        parameters[21] = nh.getParam("/params/imu/mag_soft_iron_ix", (float*) &mag_softiron_matrix[0][0], 1, 1000);
-        parameters[22] = nh.getParam("/params/imu/mag_soft_iron_iy", (float*) &mag_softiron_matrix[0][1], 1, 1000);
-        parameters[23] = nh.getParam("/params/imu/mag_soft_iron_iz", (float*) &mag_softiron_matrix[0][2], 1, 1000);
-        parameters[24] = nh.getParam("/params/imu/mag_soft_iron_jx", (float*) &mag_softiron_matrix[1][0], 1, 1000);
-        parameters[25] = nh.getParam("/params/imu/mag_soft_iron_jy", (float*) &mag_softiron_matrix[1][1], 1, 1000);
-        parameters[26] = nh.getParam("/params/imu/mag_soft_iron_jz", (float*) &mag_softiron_matrix[1][2], 1, 1000);
-        parameters[27] = nh.getParam("/params/imu/mag_soft_iron_kx", (float*) &mag_softiron_matrix[2][0], 1, 1000);
-        parameters[28] = nh.getParam("/params/imu/mag_soft_iron_ky", (float*) &mag_softiron_matrix[2][1], 1, 1000);
-        parameters[29] = nh.getParam("/params/imu/mag_soft_iron_kz", (float*) &mag_softiron_matrix[2][2], 1, 1000);
-        spin_once(nh);
+            parameters[12] = nh.getParam("/params/imu/steady_limit", (int*) &p_steady_limit, 1, 1000);
+            spin_once(nh);
 
-        for(int i=0; i<PARAM_SIZE; i++) {
-            if(!parameters[i]) {
-                sprintf(loginfo_buffer, "FXIMU Parameter for Index=%d failed", i);
-                nh.loginfo(loginfo_buffer);
-                success = false;
-                spin_once(nh);
+            parameters[13] = nh.getParam("/params/imu/world_frame", (int*) &p_world_frame, 1, 1000);
+            spin_once(nh);
+
+            parameters[14] = nh.getParam("/params/imu/use_mag", (int*) &p_use_mag, 1, 1000);
+            spin_once(nh);
+
+            parameters[15] = nh.getParam("/params/imu/kAngularVelocityThreshold", (float*) &p_kAngularVelocityThreshold, 1, 1000);
+            parameters[16] = nh.getParam("/params/imu/kAccelerationThreshold", (float*) &p_kAccelerationThreshold, 1, 1000);
+            parameters[17] = nh.getParam("/params/imu/kDeltaAngularVelocityThreshold", (float*) &p_kDeltaAngularVelocityThreshold, 1, 1000);
+            spin_once(nh);
+
+            parameters[18] = nh.getParam("/params/imu/mag_offset_x", (float*) &mag_offsets[0], 1, 1000);
+            parameters[19] = nh.getParam("/params/imu/mag_offset_y", (float*) &mag_offsets[1], 1, 1000);
+            parameters[20] = nh.getParam("/params/imu/mag_offset_z", (float*) &mag_offsets[2], 1, 1000);
+            spin_once(nh);
+
+            parameters[21] = nh.getParam("/params/imu/mag_soft_iron_ix", (float*) &mag_softiron_matrix[0][0], 1, 1000);
+            parameters[22] = nh.getParam("/params/imu/mag_soft_iron_iy", (float*) &mag_softiron_matrix[0][1], 1, 1000);
+            parameters[23] = nh.getParam("/params/imu/mag_soft_iron_iz", (float*) &mag_softiron_matrix[0][2], 1, 1000);
+            parameters[24] = nh.getParam("/params/imu/mag_soft_iron_jx", (float*) &mag_softiron_matrix[1][0], 1, 1000);
+            parameters[25] = nh.getParam("/params/imu/mag_soft_iron_jy", (float*) &mag_softiron_matrix[1][1], 1, 1000);
+            parameters[26] = nh.getParam("/params/imu/mag_soft_iron_jz", (float*) &mag_softiron_matrix[1][2], 1, 1000);
+            parameters[27] = nh.getParam("/params/imu/mag_soft_iron_kx", (float*) &mag_softiron_matrix[2][0], 1, 1000);
+            parameters[28] = nh.getParam("/params/imu/mag_soft_iron_ky", (float*) &mag_softiron_matrix[2][1], 1, 1000);
+            parameters[29] = nh.getParam("/params/imu/mag_soft_iron_kz", (float*) &mag_softiron_matrix[2][2], 1, 1000);
+            spin_once(nh);
+
+            for(int i=0; i<PARAM_SIZE; i++) {
+                if(!parameters[i]) {
+                    sprintf(loginfo_buffer, "FXIMU Parameter for Index=%d failed", i);
+                    nh.loginfo(loginfo_buffer);
+                    success = false;
+                    spin_once(nh);
+                }
             }
-        }
 
-        if(success && p_calibration_mode == 2) {
-            sprintf(loginfo_buffer, "FXIMU Parameters read from ROS");
-            nh.loginfo(loginfo_buffer);
-            spin_once(nh);
-        }
+            if(success) {
 
-        if(success && p_calibration_mode == 3) {
-            write_defaults();
-            sprintf(loginfo_buffer, "FXIMU Parameters written to EEPROM");
-            nh.loginfo(loginfo_buffer);
-            spin_once(nh);
-        }
+                if(p_calibration_mode == 2) {
+                    sprintf(loginfo_buffer, "FXIMU Parameters read from ROS");
+                    nh.loginfo(loginfo_buffer);
+                    spin_once(nh);
+                }
 
-        return success;
+                if(p_calibration_mode == 3) {
+                    write_defaults();
+                    sprintf(loginfo_buffer, "FXIMU Parameters written to EEPROM");
+                    nh.loginfo(loginfo_buffer);
+                    spin_once(nh);
+                }
 
+                parameters_ok = true;
+
+            } else {
+
+                parameters_ok = false;
+
+            }
+
+            break;
     }
+
 
 }
 

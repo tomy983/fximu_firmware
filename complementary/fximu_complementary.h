@@ -55,7 +55,7 @@ std_msgs::Int16MultiArray array;
 
 ros::Publisher pub_imu_msg("imu/data", &imu_msg);
 ros::Publisher pub_mag_msg("imu/mag", &mag_msg);
-ros::Publisher pub_array("imu/array", &array);
+ros::Publisher pub_array("imu/raw", &array);
 
 ComplementaryFilter filter_;
 bool initialized_filter_;

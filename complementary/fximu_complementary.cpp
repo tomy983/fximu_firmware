@@ -99,7 +99,7 @@ int main(void) {
             nh_prev_state = true;
 
             // handle parameters
-            parameters_ok = handle_parameters(nh);
+            handle_parameters(nh);
             print_defaults(nh);
             print_status(nh);
 
