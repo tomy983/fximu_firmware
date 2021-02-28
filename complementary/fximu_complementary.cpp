@@ -320,14 +320,14 @@ int main(void) {
                     if(nh_connected) {
                         // publish array containing raw sensor values
                         raw_sensor_data[0] = accelRD.x;
-                        raw_sensor_data[0] = accelRD.y;
-                        raw_sensor_data[0] = accelRD.z;
-                        raw_sensor_data[0] = gyroRD.x;
-                        raw_sensor_data[0] = gyroRD.y;
-                        raw_sensor_data[0] = gyroRD.z;
-                        raw_sensor_data[0] = magRD.x;
-                        raw_sensor_data[0] = magRD.y;
-                        raw_sensor_data[0] = magRD.z;
+                        raw_sensor_data[1] = accelRD.y;
+                        raw_sensor_data[2] = accelRD.z;
+                        raw_sensor_data[3] = gyroRD.x;
+                        raw_sensor_data[4] = gyroRD.y;
+                        raw_sensor_data[5] = gyroRD.z;
+                        raw_sensor_data[6] = magRD.x;
+                        raw_sensor_data[7] = magRD.y;
+                        raw_sensor_data[8] = magRD.z;
                         array.data = raw_sensor_data;
                         pub_array.publish(&array);
                     }
