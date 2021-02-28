@@ -11,7 +11,7 @@ bool parameters[PARAM_SIZE];
 
 int p_calibration_mode;
 
-bool parameters_ok = false;
+bool parameters_ok = true;
 bool eeprom_init = false;
 
 float p_gain_acc = 0.02;
@@ -318,12 +318,13 @@ void handle_parameters(ros::NodeHandle &nh) {
         parameters[i] = false;
     }
 
+    // set parameters_ok = true, since this might not be the first connection
+    parameters_ok = true;
+
     p_calibration_mode = 0;
 
     parameters[0] = nh.getParam("/params/imu/calibration_mode", (int*) &p_calibration_mode, 1, 1000);
     spin_once(nh);
-
-    bool success = true;
 
     sprintf(loginfo_buffer, "calibration_mode: %d", p_calibration_mode);
     nh.loginfo(loginfo_buffer);
@@ -336,8 +337,6 @@ void handle_parameters(ros::NodeHandle &nh) {
             // use eeprom defaults
             read_defaults();
 
-            parameters_ok = true;
-
             sprintf(loginfo_buffer, "FXIMU Parameters read from EEPROM");
             nh.loginfo(loginfo_buffer);
             spin_once(nh);
@@ -348,8 +347,6 @@ void handle_parameters(ros::NodeHandle &nh) {
 
             // calibration mode
             reset_filter_parameters();
-
-            parameters_ok = true;
 
             break;
 
@@ -410,15 +407,15 @@ void handle_parameters(ros::NodeHandle &nh) {
                 if(!parameters[i]) {
                     sprintf(loginfo_buffer, "FXIMU Parameter for Index=%d failed", i);
                     nh.loginfo(loginfo_buffer);
-                    success = false;
+                    parameters_ok = false;
                     spin_once(nh);
                 }
             }
 
-            if(success) {
+            if(parameters_ok) {
 
                 if(p_calibration_mode == 2) {
-                    sprintf(loginfo_buffer, "FXIMU Parameters read from ROS");
+                    sprintf(loginfo_buffer, "FXIMU Parameters read from ROS param server");
                     nh.loginfo(loginfo_buffer);
                     spin_once(nh);
                 }
@@ -429,12 +426,6 @@ void handle_parameters(ros::NodeHandle &nh) {
                     nh.loginfo(loginfo_buffer);
                     spin_once(nh);
                 }
-
-                parameters_ok = true;
-
-            } else {
-
-                parameters_ok = false;
 
             }
 
