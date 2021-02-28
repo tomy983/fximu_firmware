@@ -99,7 +99,7 @@ int main(void) {
             nh_prev_state = true;
 
             // handle parameters
-            handle_parameters(nh);
+            parameters_ok = handle_parameters(nh);
             print_defaults(nh);
             print_status(nh);
 
@@ -146,7 +146,7 @@ int main(void) {
         }
 
         // if system disabled, red led will long blink, and rest of the loop will not execute
-        if(imu_disabled) {
+        if(!parameters_ok) {
             red_led(true);
             MAP_SysCtlDelay(13333333UL);
             red_led(false);

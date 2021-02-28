@@ -10,7 +10,8 @@ char loginfo_buffer[100];
 bool parameters[PARAM_SIZE];
 
 int p_calibration_mode;
-bool imu_disabled = false;
+
+bool parameters_ok = false;
 bool eeprom_init = false;
 
 float p_gain_acc = 0.02;
@@ -192,8 +193,6 @@ void reset_filter_parameters() {
     mag_softiron_matrix[2][1] = 0.0;
     mag_softiron_matrix[2][2] = 0.0;
 
-    imu_disabled = false;
-
     /*
     p_sensor_read_rate = 400;
     p_output_rate_divider = 8;
@@ -299,20 +298,20 @@ void print_defaults(ros::NodeHandle &nh) {
 void print_status(ros::NodeHandle &nh) {
 
     if(!eeprom_init) {
-        sprintf(loginfo_buffer, "EEPROM Init Failure");
+        sprintf(loginfo_buffer, "EEPROM Init Error. EEPROM DISABLED");
         nh.loginfo(loginfo_buffer);
         spin_once(nh);
     }
 
-    if(imu_disabled) {
-        printf(loginfo_buffer, "Parameter Load Failure. IMU DISABLED");
+    if(!parameters_ok) {
+        sprintf(loginfo_buffer, "Parameter Load Error. IMU DISABLED");
         nh.loginfo(loginfo_buffer);
         spin_once(nh);
     }
 
 }
 
-void handle_parameters(ros::NodeHandle &nh) {
+bool handle_parameters(ros::NodeHandle &nh) {
 
     // set all to false
     for(int i=0; i<PARAM_SIZE; i++) {
@@ -402,23 +401,24 @@ void handle_parameters(ros::NodeHandle &nh) {
                 sprintf(loginfo_buffer, "FXIMU Parameter for Index=%d failed", i);
                 nh.loginfo(loginfo_buffer);
                 success = false;
+                spin_once(nh);
             }
         }
 
         if(success && p_calibration_mode == 2) {
             sprintf(loginfo_buffer, "FXIMU Parameters read from ROS");
             nh.loginfo(loginfo_buffer);
+            spin_once(nh);
         }
 
         if(success && p_calibration_mode == 3) {
             write_defaults();
             sprintf(loginfo_buffer, "FXIMU Parameters written to EEPROM");
             nh.loginfo(loginfo_buffer);
+            spin_once(nh);
         }
 
-        if(!success) { imu_disabled = true; }
-
-        spin_once(nh);
+        return success;
 
     }
 
