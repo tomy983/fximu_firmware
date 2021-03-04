@@ -193,19 +193,6 @@ void reset_filter_parameters() {
     mag_softiron_matrix[2][1] = 0.0;
     mag_softiron_matrix[2][2] = 0.0;
 
-    /*
-    p_sensor_read_rate = 400;
-    p_output_rate_divider = 8;
-    p_adaptive_gain = true;
-    p_bias_estimation = true;
-
-    p_gfsr = 2;
-    p_afsr = 1;
-    p_steady_limit = 32;
-    p_world_frame = 0;
-    p_use_mag = 1;
-    */
-
 }
 
 void print_defaults(ros::NodeHandle &nh) {
