@@ -270,6 +270,7 @@ int main(void) {
                             break;
                     }
 
+                    // TODO: fill at init time?
                     imu_msg.angular_velocity_covariance[0] = 0.02;
                     imu_msg.angular_velocity_covariance[1] = 0;
                     imu_msg.angular_velocity_covariance[2] = 0;
