@@ -96,6 +96,6 @@ Change the last line above with:
 
         psRingBuf->ui32Size = psBufVars->sRingBuf.ui32Size;
 
-(c) Copyright, 2019, Can Altineller altineller@gmail.com
+---
 
-Free for non commercial use
+![license](https://raw.githubusercontent.com/rosrider/fximu_doc/main/license.png)
