@@ -23,6 +23,9 @@ int main(void) {
 
     // init ports, hardware reset of sensor.
     init_system();
+    
+    // init node
+    nh.initNode();
 
     // init i2c
     init_I2C2();
@@ -68,8 +71,7 @@ int main(void) {
     // init sensors
     init_sensors();
 
-    // init node
-    nh.initNode();
+    
 
     // advertise publishers
     nh.advertise(pub_imu_msg);
