@@ -89,19 +89,13 @@ void fx_delay() {
 
 void hard_reset() {
 
-    // gyro hard reset
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0x00);
-
-    // accelmag hard reset
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
+    // gyro + accelmag hard reset
+    MAP_GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0x00);
 
     fx_delay();
 
-    // gyro operational
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
-
-    // accelmag operational
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x00);
+    // gyro + accelmag operational
+    MAP_GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, GPIO_PIN_2);
 
     fx_delay();
 }
@@ -111,8 +105,10 @@ void init_system() {
     // record system clock value after clock initialization
     ui32SysClkFreq = MAP_SysCtlClockGet();
 
-    // Peripheral F enable, PF0:LED, PF2:GYRO_RST, PF3:ACC_RST, configured as output
+    // Peripheral F enable, PF0:USR_SW2, PF1:red led, PF2:blue led, PF3:green led, configured as output
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    // Peripheral D enable, PD2:GYRO_RST + ACC_RST, configured as output
+    MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
 
     // Enable eeprom
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
@@ -129,18 +125,25 @@ void init_system() {
 
     // configure port f
     MAP_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
+    // configure port d
+    MAP_GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE, GPIO_PIN_2);
 
     // blink green led
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);
-    fx_delay();
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);
+    
+    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
+    for(int i=0; i<5; i++) {
+        fx_delay();
+    }
+    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
 
     // initialize raw sensor data
     for(int i=0; i<9; i++) { raw_sensor_data[i] = 0; }
 
     // blink red led
     MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);
-    fx_delay();
+    for(int i=0; i<5; i++) {
+        fx_delay();
+    }
     MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0);
 
 }
@@ -179,9 +182,9 @@ void red_led(bool on) {
 
 void green_led(bool on) {
     if(on) {
-        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);
+        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
     } else {
-        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);
+        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
     }
 }
 
