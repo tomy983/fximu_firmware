@@ -30,33 +30,23 @@ int main(void) {
     // init i2c
     init_I2C2();
 
-    // accelmag interrupt init
+    // accelmag and gyro interrupt init
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
     GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_2);
-
-    GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-
+    GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_3);
+    GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+    GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_3, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
     GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_2);
+    GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_3);    
     GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_2);
-    GPIOIntRegister(GPIO_PORTE_BASE, accelmag_isr);
-    GPIOIntTypeSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_FALLING_EDGE);
+    GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_3);    
+    GPIOIntRegister(GPIO_PORTE_BASE, accelmaggyro_isr);
+    GPIOIntTypeSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_LOW_LEVEL);
+    GPIOIntTypeSet(GPIO_PORTE_BASE, GPIO_PIN_3, GPIO_LOW_LEVEL);    
     GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_2);
-
-    // gyro interrupt pin setup
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
-    GPIOPinTypeGPIOInput(GPIO_PORTC_BASE, GPIO_PIN_4);
-
-    GPIOPadConfigSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-
-    GPIOIntDisable(GPIO_PORTC_BASE, GPIO_PIN_4);
-    GPIOIntClear(GPIO_PORTC_BASE, GPIO_PIN_4);
-    GPIOIntRegister(GPIO_PORTC_BASE, gyro_isr);
-    GPIOIntTypeSet(GPIO_PORTC_BASE, GPIO_PIN_4, GPIO_FALLING_EDGE);
-    GPIOIntEnable(GPIO_PORTC_BASE, GPIO_PIN_4);
-
-    // set interrupt priorities
-    IntPrioritySet(INT_GPIOA, 0x00); // accelmag
-    IntPrioritySet(INT_GPIOC, 0x01); // gyro
+    GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_3);       
+    IntMasterEnable();
+    IntEnable(INT_GPIOE);  
 
     // timer interrupt initialization
     SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);

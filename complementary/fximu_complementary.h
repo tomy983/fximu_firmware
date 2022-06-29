@@ -60,19 +60,16 @@ ros::Publisher pub_array("imu/raw", &array);
 ComplementaryFilter filter_;
 bool initialized_filter_;
 
-// gyro interrupt service routine
-void gyro_isr(void) {
-    if(GPIOIntStatus(GPIO_PORTC_BASE, true) & GPIO_PIN_4) {
-        GyroGetData(FXAS21002C_ADDRESS, &gyroRD);
-        GPIOIntClear(GPIO_PORTC_BASE, GPIO_PIN_4);
+// accelmag + gyro interrupt service routine
+void accelmaggyro_isr(void) {
+int32_t status=0;
+status = GPIOIntStatus(GPIO_PORTE_BASE,true);
+GPIOIntClear(GPIO_PORTE_BASE,status);
+    if( (status & GPIO_INT_PIN_2) == GPIO_INT_PIN_2) {
+        AGGetData(FXOS8700_ADDRESS, &accelRD, &magRD);        
     }
-}
-
-// accelmag interrupt service routine
-void accelmag_isr(void) {
-    if(GPIOIntStatus(GPIO_PORTE_BASE, true) & GPIO_PIN_2) {
-        AGGetData(FXOS8700_ADDRESS, &accelRD, &magRD);
-        GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_2);
+    if((status & GPIO_INT_PIN_3) == GPIO_INT_PIN_3) {
+        GyroGetData(FXAS21002C_ADDRESS, &gyroRD);
     }
 }
 
@@ -91,7 +88,7 @@ void hard_reset() {
 
     // gyro + accelmag hard reset
     MAP_GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0x00);
-
+    
     fx_delay();
 
     // gyro + accelmag operational
@@ -118,13 +115,9 @@ void init_system() {
         if(EEPROMInit()==EEPROM_INIT_OK) { eeprom_init = true; break; }
         MAP_SysCtlDelay(13333UL);
     }
-
-    // unlock PF0, after enabling GPIOF
-    HWREG(GPIO_PORTF_BASE+GPIO_O_LOCK) = GPIO_LOCK_KEY;
-    HWREG(GPIO_PORTF_BASE+GPIO_O_CR) |= GPIO_PIN_0;
-
+ 
     // configure port f
-    MAP_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
+    MAP_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
     // configure port d
     MAP_GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE, GPIO_PIN_2);
 

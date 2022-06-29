@@ -1,3 +1,15 @@
+Modified to connect Adafruit Precision NXP 9-DOF Breakout Board (https://www.adafruit.com/product/3463) to a Tiva launchpad (EK-TM4C123GXL)
+
+Pin connections:
+Tiva  ->  ADA-3463
+PD2   ->  RST
+PE4   ->  SCL
+PE5   ->  SDA
+PE3   ->  GI2
+PE1   ->  AI2
++3.3V ->  VIN
+GND   ->  GND
+
 ### FXIMU_firmware
 
 **Notice: If you are just going to use the FXIMU, you dont need this repository**  
