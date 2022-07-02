@@ -27,9 +27,9 @@ void AGInit(uint32_t ui32WorkerAddress, tAccelRange tAFSR, tOutputDataRate tODR)
     ui8Register[0] = 0x02;
     I2CAGSend(ui32WorkerAddress, AG_CTRL_REG2, ui8Register, sizeof(ui8Register));
 
-    // interrupt configuration, active low, open drain
+    // interrupt configuration, active low, //push-pull
     // active low
-    ui8Register[0] = 0x01;
+    ui8Register[0] = 0x00; 
     I2CAGSend(ui32WorkerAddress, AG_CTRL_REG3, ui8Register, sizeof(ui8Register));
 
     // data ready interrupt is routed to pin 2

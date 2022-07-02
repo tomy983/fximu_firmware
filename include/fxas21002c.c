@@ -28,9 +28,9 @@ void GyroInit(uint32_t ui32WorkerAddress, tGyroRange tGFSR, tOutputDataRate tODR
     ui8Register[0] |= (tODR << 2 );
     I2CGyroSend(ui32WorkerAddress, GYRO_CTRL_REG1, ui8Register, sizeof(ui8Register));
 
-    // enable int, active low, open drain
+    // enable int, active low, //push-pull
     I2CGyroReceive(ui32WorkerAddress, GYRO_CTRL_REG2, ui8Register, sizeof(ui8Register));
-    ui8Register[0] |= 0B00000101;
+    ui8Register[0] |= 0B00000100; 
     I2CGyroSend(ui32WorkerAddress, GYRO_CTRL_REG2, ui8Register, sizeof(ui8Register));
 
     // set active
