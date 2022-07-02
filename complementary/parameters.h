@@ -6,7 +6,7 @@
 #include <stdio.h>
 char loginfo_buffer[100];
 
-#define PARAM_SIZE 30
+#define PARAM_SIZE 31
 bool parameters[PARAM_SIZE];
 
 int p_calibration_mode;
@@ -39,6 +39,7 @@ int p_steady_limit = 32;
 
 int p_world_frame = 0;
 int p_use_mag = 1;
+int p_publish_mag = 1;
 
 char imu_link[16] = "base_imu_link";
 char mag_link[16] = "base_mag_link";
@@ -120,6 +121,7 @@ void read_defaults() {
     read_eeprom_string(0x70, imu_link_ptr);
     read_eeprom_string(0x80, mag_link_ptr);
 
+    read_eeprom_int(0x90, p_publish_mag);
 }
 
 void write_defaults() {
@@ -162,6 +164,7 @@ void write_defaults() {
     write_eeprom_string(0x70, imu_link_ptr);
     write_eeprom_string(0x80, mag_link_ptr);
 
+    write_eeprom_int(0x90, p_publish_mag);
 }
 
 void spin_once(ros::NodeHandle &nh) {
@@ -250,6 +253,9 @@ void print_defaults(ros::NodeHandle &nh) {
     nh.loginfo(loginfo_buffer);
 
     sprintf(loginfo_buffer, "use_mag: %d", p_use_mag);
+    nh.loginfo(loginfo_buffer);
+
+    sprintf(loginfo_buffer, "publish_mag: %d", p_publish_mag);
     nh.loginfo(loginfo_buffer);
 
     spin_once(nh);
@@ -388,6 +394,9 @@ void handle_parameters(ros::NodeHandle &nh) {
             parameters[27] = nh.getParam("/params/imu/mag_soft_iron_kx", (float*) &mag_softiron_matrix[2][0], 1, 1000);
             parameters[28] = nh.getParam("/params/imu/mag_soft_iron_ky", (float*) &mag_softiron_matrix[2][1], 1, 1000);
             parameters[29] = nh.getParam("/params/imu/mag_soft_iron_kz", (float*) &mag_softiron_matrix[2][2], 1, 1000);
+            spin_once(nh);
+
+            parameters[30] = nh.getParam("/params/imu/publish_mag", (int*) &p_publish_mag, 1, 1000);
             spin_once(nh);
 
             for(int i=0; i<PARAM_SIZE; i++) {

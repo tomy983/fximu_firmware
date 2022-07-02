@@ -32,18 +32,18 @@ int main(void) {
 
     // accelmag and gyro interrupt init
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
-    GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_2);
+    GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_1);
     GPIOPinTypeGPIOInput(GPIO_PORTE_BASE, GPIO_PIN_3);
-    GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+    GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_1, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
     GPIOPadConfigSet(GPIO_PORTE_BASE, GPIO_PIN_3, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
-    GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_2);
+    GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_1);
     GPIOIntDisable(GPIO_PORTE_BASE, GPIO_PIN_3);    
-    GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_2);
+    GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_1);
     GPIOIntClear(GPIO_PORTE_BASE, GPIO_PIN_3);    
     GPIOIntRegister(GPIO_PORTE_BASE, accelmaggyro_isr);
-    GPIOIntTypeSet(GPIO_PORTE_BASE, GPIO_PIN_2, GPIO_LOW_LEVEL);
+    GPIOIntTypeSet(GPIO_PORTE_BASE, GPIO_PIN_1, GPIO_LOW_LEVEL);
     GPIOIntTypeSet(GPIO_PORTE_BASE, GPIO_PIN_3, GPIO_LOW_LEVEL);    
-    GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_2);
+    GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_1);
     GPIOIntEnable(GPIO_PORTE_BASE, GPIO_PIN_3);       
     IntMasterEnable();
     IntEnable(INT_GPIOE);  
@@ -60,8 +60,6 @@ int main(void) {
 
     // init sensors
     init_sensors();
-
-    
 
     // advertise publishers
     nh.advertise(pub_imu_msg);
@@ -295,10 +293,14 @@ int main(void) {
 
                     if(nh_connected) {
 
-                        // publish imu and mag messages, if connected
+                        // publish imu messages, if connected
                         pub_imu_msg.publish(&imu_msg);
-                        pub_mag_msg.publish(&mag_msg);
-
+                        // publish mag messages if requested
+                        if (p_publish_mag)
+                        {
+                           pub_mag_msg.publish(&mag_msg);
+                        }
+                        
                         // report gyro biases and accel gain
                         if(pub_sequence % 4096 == 0) {
                             sprintf(loginfo_buffer, "G: %.3f, %.3f, %.3f, A: %.3f ", filter_.getAngularVelocityBiasX(), filter_.getAngularVelocityBiasY(), filter_.getAngularVelocityBiasZ(), filter_.getGain());
