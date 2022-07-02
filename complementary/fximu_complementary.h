@@ -65,12 +65,14 @@ void accelmaggyro_isr(void) {
 int32_t status=0;
 status = GPIOIntStatus(GPIO_PORTE_BASE,true);
 GPIOIntClear(GPIO_PORTE_BASE,status);
-    if( (status & GPIO_INT_PIN_2) == GPIO_INT_PIN_2) {
-        AGGetData(FXOS8700_ADDRESS, &accelRD, &magRD);        
-    }
     if((status & GPIO_INT_PIN_3) == GPIO_INT_PIN_3) {
         GyroGetData(FXAS21002C_ADDRESS, &gyroRD);
     }
+    if((status & GPIO_INT_PIN_1) == GPIO_INT_PIN_1) {
+    
+        AGGetData(FXOS8700_ADDRESS, &accelRD, &magRD);
+    }
+   
 }
 
 // timer interrupt handler
