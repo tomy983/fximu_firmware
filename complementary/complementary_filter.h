@@ -13,35 +13,38 @@
 class ComplementaryFilter {
 
   public:
+
     ComplementaryFilter();
+
+    void setDoBiasEstimation(bool do_bias_estimation);
+    void setDoAdaptiveGain(bool do_adaptive_gain);
 
     bool setGainAcc(float gain);
     bool setGainMag(float gain);
-    float getGainAcc() const;
-    float getGainMag() const;
-    float getGain();
-
     bool setBiasAlpha(float bias_alpha);
-    float getBiasAlpha() const;
-
-    // When the filter is in the steady state, bias estimation will occur (if the parameter is enabled).
-    bool getSteadyState() const;
-
-    void setDoBiasEstimation(bool do_bias_estimation);
-    bool getDoBiasEstimation() const;
-
-    void setDoAdaptiveGain(bool do_adaptive_gain);
-    bool getDoAdaptiveGain() const;
 
     bool setKAngularVelocityThreshold(float thres);
     bool setKAccelerationThreshold(float thres);
+    bool setKSteadyGravity(float g);
     bool setKDeltaAngularVelocityThreshold(float thres);
 
-    bool setSteadyLimit(int limit);
+    bool setAngularVelocityBiasX(float bias);
+    bool setAngularVelocityBiasY(float bias);
+    bool setAngularVelocityBiasZ(float bias);
+
+    bool getDoAdaptiveGain() const;
+    bool getDoBiasEstimation() const;
+
+    float getGainAcc() const;
+    float getGainMag() const;
+    float getBiasAlpha() const;
 
     float getAngularVelocityBiasX() const;
     float getAngularVelocityBiasY() const;
     float getAngularVelocityBiasZ() const;
+
+    float getGain();
+    bool getSteadyState() const;
 
     // Set the orientation, as a Hamilton Quaternion, of the body frame wrt the fixed frame.
     void setOrientation(float q0, float q1, float q2, float q3);
@@ -61,34 +64,29 @@ class ComplementaryFilter {
     void update(float ax, float ay, float az, float wx, float wy, float wz, double dt);
 
   private:
-    static const float kGravity;
 
-    // Bias estimation steady state thresholds
-    float kAngularVelocityThreshold;
-    float kAccelerationThreshold;
-    float kDeltaAngularVelocityThreshold;
+    // Parameter whether to do bias estimation or not.
+    bool do_bias_estimation_;
+
+    // Parameter whether to do adaptive gain or not.
+    bool do_adaptive_gain_;
 
     // Gain parameter for the complementary filter, belongs in [0, 1].
     float gain_acc_;
     float gain_mag_;
 
-    float gain_;
-
     // Bias estimation gain parameter, belongs in [0, 1].
     float bias_alpha_;
 
-    // Parameter whether to do bias estimation or not.
-    bool do_bias_estimation_;
-    
-    // Parameter whether to do adaptive gain or not.
-    bool do_adaptive_gain_;
+    // Bias estimation steady state thresholds
+    float kAngularVelocityThreshold;
+    float kAccelerationThreshold;
+    float kSteadyGravity;
+    float kDeltaAngularVelocityThreshold;
 
     bool initialized_;
-    int steady_limit_;
-
+    float gain_;
     bool steady_state = false;
-    bool steady_state_momentary = false;
-    int steady_state_count = 0;
 
     // The orientation as a Hamilton quaternion (q0 is the scalar). Represents
     // the orientation of the fixed frame wrt the body frame.

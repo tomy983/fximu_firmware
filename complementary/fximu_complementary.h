@@ -9,6 +9,7 @@
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
+#include "inc/hw_nvic.h"
 
 #include "driverlib/i2c.h"
 #include "driverlib/sysctl.h"
@@ -32,11 +33,11 @@ tRawData gyroRD;
 tRawData accelRD;
 tRawData magRD;
 
-tAccelRange _AFSR = AFSR_4G;
-tGyroRange _GFSR = GFSR_500PS;
+tAccelRange _AFSR = AFSR_8G;
+tGyroRange _GFSR = GFSR_2000PS;
 
-float _GYRO_SENSITIVITY = GYRO_SENSITIVITY_500DPS;
-float _ACCEL_SENSITIVITY = ACCEL_MG_LSB_4G;
+float _GYRO_SENSITIVITY;
+float _ACCEL_SENSITIVITY;
 
 volatile bool data_ready = false;
 uint32_t ui32SysClkFreq;
@@ -60,19 +61,20 @@ ros::Publisher pub_array("imu/raw", &array);
 ComplementaryFilter filter_;
 bool initialized_filter_;
 
+uint8_t fxas21002_WHOAMI;
+uint8_t fxos8700_WHOAMI;
+
 // accelmag + gyro interrupt service routine
 void accelmaggyro_isr(void) {
 int32_t status=0;
 status = GPIOIntStatus(GPIO_PORTE_BASE,true);
 GPIOIntClear(GPIO_PORTE_BASE,status);
+    if( (status & GPIO_INT_PIN_2) == GPIO_INT_PIN_2) {
+        AGGetData(FXOS8700_ADDRESS, &accelRD, &magRD);
+    }
     if((status & GPIO_INT_PIN_3) == GPIO_INT_PIN_3) {
         GyroGetData(FXAS21002C_ADDRESS, &gyroRD);
     }
-    if((status & GPIO_INT_PIN_1) == GPIO_INT_PIN_1) {
-    
-        AGGetData(FXOS8700_ADDRESS, &accelRD, &magRD);
-    }
-   
 }
 
 // timer interrupt handler
@@ -81,22 +83,70 @@ void Timer0IntHandler(void) {
     ROM_TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
 }
 
-void fx_delay() {
-    // 50ms
-    MAP_SysCtlDelay(1333333UL);
+void red_on() { MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1); }
+void red_off() { MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0); }
+void green_on() { MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3); }
+void green_off() { MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0); }
+
+void blink_blocking_red(uint32_t delay) {
+    red_on(); MAP_SysCtlDelay(delay);
+    red_off(); MAP_SysCtlDelay(delay);
 }
 
-void hard_reset() {
+void blink_blocking_green(uint32_t delay) {
+    green_on(); MAP_SysCtlDelay(delay);
+    green_off(); MAP_SysCtlDelay(delay);
+}
+
+void blink_blocking_both(uint32_t delay) {
+    green_on(); MAP_SysCtlDelay(delay); green_off();
+    red_on(); MAP_SysCtlDelay(delay); red_off();
+}
+
+void sensor_hard_reset() {
 
     // gyro + accelmag hard reset
     MAP_GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, 0x00);
-    
-    fx_delay();
+
+    MAP_SysCtlDelay(DELAY_50MS);
 
     // gyro + accelmag operational
     MAP_GPIOPinWrite(GPIO_PORTD_BASE, GPIO_PIN_2, GPIO_PIN_2);
 
-    fx_delay();
+    MAP_SysCtlDelay(DELAY_50MS);
+
+}
+
+void print_diagnosis() {
+
+    if(!eeprom_init) {
+        sprintf(loginfo_buffer, "eeprom init error");
+        nh.loginfo(loginfo_buffer);
+        spin_once(nh);
+    }
+
+    if(fxas21002_WHOAMI != 0xD7) {
+        sprintf(loginfo_buffer, "fxas21002 fail: %d", fxas21002_WHOAMI);
+        nh.loginfo(loginfo_buffer);
+        spin_once(nh);
+    }
+
+    if(fxos8700_WHOAMI != 0xC7) {
+        sprintf(loginfo_buffer, "fxos8700 fail: %d", fxos8700_WHOAMI);
+        nh.loginfo(loginfo_buffer);
+        spin_once(nh);
+    }
+
+    if(fxas21002_WHOAMI != 0xD7 || fxos8700_WHOAMI != 0xC7) {
+        sprintf(loginfo_buffer, "sensor error: imu disabled");
+        nh.loginfo(loginfo_buffer);
+        spin_once(nh);
+        // TODO: DOC: add fatal status
+        // blink red, 500ms
+        // block program
+        while(1) { blink_blocking_red(DELAY_500MS); }
+    }
+
 }
 
 void init_system() {
@@ -106,8 +156,16 @@ void init_system() {
 
     // Peripheral F enable, PF0:USR_SW2, PF1:red led, PF2:blue led, PF3:green led, configured as output
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+
     // Peripheral D enable, PD2:GYRO_RST + ACC_RST, configured as output
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+
+    // Peripheral A enable, PA2 is bootloader trigger
+    MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+
+    // set PA2 as input
+    GPIOPinTypeGPIOInput(GPIO_PORTA_BASE, GPIO_PIN_2);
+    GPIOPadConfigSet(GPIO_PORTA_BASE, GPIO_PIN_2, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
 
     // Enable eeprom
     MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
@@ -115,31 +173,41 @@ void init_system() {
     // Try 3 times to enable eeprom, if not fail safe
     for(int i=0; i<3; i++) {
         if(EEPROMInit()==EEPROM_INIT_OK) { eeprom_init = true; break; }
-        MAP_SysCtlDelay(13333UL);
+        MAP_SysCtlDelay(DELAY_5MS);
     }
- 
+
     // configure port f
-    MAP_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
+     MAP_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
     // configure port d
     MAP_GPIOPinTypeGPIOOutput(GPIO_PORTD_BASE, GPIO_PIN_2);
-
-    // blink green led
-    
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
-    for(int i=0; i<5; i++) {
-        fx_delay();
-    }
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
 
     // initialize raw sensor data
     for(int i=0; i<9; i++) { raw_sensor_data[i] = 0; }
 
-    // blink red led
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);
-    for(int i=0; i<5; i++) {
-        fx_delay();
+    // 50mS delay
+    MAP_SysCtlDelay(1333333UL); // 50ms
+
+    // check if bootloader mode
+    if(GPIOPinRead(GPIO_PORTA_BASE, GPIO_PIN_2)==0) {
+
+        // we must make sure we turn off SysTick and its interrupt before entering  the boot loader
+        MAP_SysTickIntDisable();
+        MAP_SysTickDisable();
+
+        // disable all processor interrupts
+        // instead of disabling them one at a time, a direct write to NVIC is done to disable all peripheral interrupts
+        HWREG(NVIC_DIS0) = 0xffffffff;
+        HWREG(NVIC_DIS1) = 0xffffffff;
+
+        // return control to the boot loader
+        // this is a call to the SVC handler in the boot loader
+        (*((void (*)(void))(*(uint32_t *)0x2c)))();
+
     }
-    MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0);
+
+    // TODO: DOC: BLINK INIT
+    // flash green and then red led when system initialized
+    if(eeprom_init) { blink_blocking_both(DELAY_50MS); }
 
 }
 
@@ -167,25 +235,7 @@ void init_I2C0(void) {
     HWREG(I2C0_BASE + I2C_O_FIFOCTL) = 80008000;
 }
 
-void red_led(bool on) {
-    if(on) {
-        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);
-    } else {
-        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0);
-    }
-}
-
-void green_led(bool on) {
-    if(on) {
-        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
-    } else {
-        MAP_GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
-    }
-}
-
 void init_sensors() {
-
-    hard_reset();
 
     switch(p_gfsr) {
         case 0:
@@ -205,8 +255,8 @@ void init_sensors() {
             _GYRO_SENSITIVITY = GYRO_SENSITIVITY_250DPS;
             break;
         default:
-            _GFSR = GFSR_500PS;
-            _GYRO_SENSITIVITY = GYRO_SENSITIVITY_500DPS;
+            _GFSR = GFSR_2000PS;
+            _GYRO_SENSITIVITY = GYRO_SENSITIVITY_2000DPS;
             break;
     }
 
@@ -224,31 +274,32 @@ void init_sensors() {
             _ACCEL_SENSITIVITY = ACCEL_MG_LSB_8G;
             break;
         default:
-            _AFSR = AFSR_4G;
-            _ACCEL_SENSITIVITY = ACCEL_MG_LSB_4G;
+            _AFSR = AFSR_8G;
+            _ACCEL_SENSITIVITY = ACCEL_MG_LSB_8G;
             break;
     }
 
     switch(p_sensor_read_rate) {
         case 50:
             GyroInit(FXAS21002C_ADDRESS, _GFSR, ODR_50HZ);
-            AGInit(FXOS8700_ADDRESS, _AFSR, ODR_100HZ);
+            AccelMagInit(FXOS8700_ADDRESS, _AFSR, ODR_100HZ);
             break;
         case 100:
             GyroInit(FXAS21002C_ADDRESS, _GFSR, ODR_100HZ);
-            AGInit(FXOS8700_ADDRESS, _AFSR, ODR_200HZ);
+            AccelMagInit(FXOS8700_ADDRESS, _AFSR, ODR_200HZ);
             break;
         case 200:
             GyroInit(FXAS21002C_ADDRESS, _GFSR, ODR_200HZ);
-            AGInit(FXOS8700_ADDRESS, _AFSR, ODR_400HZ);
+            AccelMagInit(FXOS8700_ADDRESS, _AFSR, ODR_400HZ);
             break;
         case 400:
             GyroInit(FXAS21002C_ADDRESS, _GFSR, ODR_400HZ);
-            AGInit(FXOS8700_ADDRESS, _AFSR, ODR_800HZ);
+            AccelMagInit(FXOS8700_ADDRESS, _AFSR, ODR_800HZ);
             break;
         default:
+            // default 100hz
             GyroInit(FXAS21002C_ADDRESS, _GFSR, ODR_100HZ);
-            AGInit(FXOS8700_ADDRESS, _AFSR, ODR_200HZ);
+            AccelMagInit(FXOS8700_ADDRESS, _AFSR, ODR_200HZ);
             break;
     }
 
@@ -264,7 +315,8 @@ void init_sensors() {
         case 16:
             break;
         default:
-            p_output_rate_divider = 8;
+            // default 2
+            p_output_rate_divider = 2;
             break;
     }
 

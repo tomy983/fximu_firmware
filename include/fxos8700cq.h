@@ -126,14 +126,18 @@ extern "C"
 #define AG_A_FFMT_THS_Z_MSB 0x77
 #define AG_A_FFMT_THS_Z_LSB 0x78
 
+uint8_t fxos_register[1];
+uint8_t fxos_data[13];
+
 // I2C General Send and receive functions
-extern void I2CAGReceive(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pReceiveData, uint8_t ui8NumBytes);
-extern void I2CAGSend(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pTransmitData, uint8_t ui8NumBytes);
-extern void I2CAGSingleByteSend(uint8_t ui32WorkerAddress, uint8_t byte);
+extern void I2CAccelMagReceive(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pReceiveData, uint8_t ui8NumBytes);
+extern void I2CAccelMagSend(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pTransmitData, uint8_t ui8NumBytes);
+extern void I2CAccelMagSingleByteSend(uint8_t ui32WorkerAddress, uint8_t byte);
 
 // FXOS8700CQ functions
-void AGInit(uint32_t ui32WorkerAddress, tAccelRange tAFSR, tOutputDataRate tODR);
-void AGGetData(uint32_t ui32WorkerAddress, tRawData *accelRD , tRawData *magRD);
+void AccelMagInit(uint32_t ui32WorkerAddress, tAccelRange tAFSR, tOutputDataRate tODR);
+void AccelMagGetData(uint32_t ui32WorkerAddress, tRawData *accelRD , tRawData *magRD);
+uint8_t AccelMagWhoAmI(uint32_t ui32WorkerAddress);
 
 #ifdef __cplusplus
 }

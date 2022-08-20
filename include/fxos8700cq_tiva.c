@@ -6,7 +6,7 @@
 #include "inc/hw_memmap.h"
 #include "fxos8700cq_proc.h"
 
-void I2CAGReceive(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pReceiveData, uint8_t ui8NumBytes) {
+void I2CAccelMagReceive(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pReceiveData, uint8_t ui8NumBytes) {
 
     // specify that we are writing (a register address) to the worker device
     I2CMasterSlaveAddrSet(I2C2_BASE, ui32WorkerAddress, false);
@@ -71,7 +71,7 @@ void I2CAGReceive(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_
 }
 
 // sends an I2C command to the specified worker
-void I2CAGSend(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pReceiveData, uint8_t ui8NumBytes) {
+void I2CAccelMagSend(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *pReceiveData, uint8_t ui8NumBytes) {
 
     // tell the master module what address it will place on the bus when communicating with the worker
     I2CMasterSlaveAddrSet(I2C2_BASE, ui32WorkerAddress, false);
@@ -111,10 +111,9 @@ void I2CAGSend(uint32_t ui32WorkerAddress, uint8_t ui32WorkerRegister, uint8_t *
 }
 
 // send single byte to worker address
-void I2CAGSingleByteSend(uint8_t ui32WorkerAddress, uint8_t byte) {
+void I2CAccelMagSingleByteSend(uint8_t ui32WorkerAddress, uint8_t byte) {
     I2CMasterSlaveAddrSet(I2C2_BASE, ui32WorkerAddress, false);
     I2CMasterDataPut(I2C2_BASE, byte);
     I2CMasterControl(I2C2_BASE, I2C_MASTER_CMD_SINGLE_SEND);
     while(I2CMasterBusy(I2C2_BASE));
 }
-
