@@ -72,7 +72,7 @@ GPIOIntClear(GPIO_PORTE_BASE,status);
     if( (status & GPIO_INT_PIN_2) == GPIO_INT_PIN_2) {
         AccelMagGetData(FXOS8700_ADDRESS, &accelRD, &magRD);
     }
-    if((status & GPIO_INT_PIN_3) == GPIO_INT_PIN_3) {
+    if((status & GPIO_INT_PIN_3) == GPIO_INT_PIN_1) {
         GyroGetData(FXAS21002C_ADDRESS, &gyroRD);
     }
 }
