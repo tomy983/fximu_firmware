@@ -333,9 +333,13 @@ int main(void) {
                     imu_msg.orientation_covariance[7] = ORIENTATION_COVARIANCE_7;
                     imu_msg.orientation_covariance[8] = ORIENTATION_COVARIANCE_8;
 
-                    // publish imu and mag messages, if connected
+                     // publish imu messages, if connected
                     pub_imu_msg.publish(&imu_msg);
-                    pub_mag_msg.publish(&mag_msg);
+                    // publish mag messages if requested
+                        if (p_publish_mag)
+                        {
+                           pub_mag_msg.publish(&mag_msg);
+                        }
 
                     // report gyro biases and accel gain
                     if((p_bias_estimation || p_adaptive_gain) && pub_sequence % 2048 == 0) {

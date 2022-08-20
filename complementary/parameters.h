@@ -40,6 +40,7 @@ int p_output_rate_divider = 2;  // value values are 2, 4, 8, 16
 
 bool p_adaptive_gain = true;
 bool p_bias_estimation = true;
+int p_publish_mag = 1;
 
 int p_gfsr = 0; // GFSR_2000PS
 int p_afsr = 2; // AFSR_8G
@@ -138,6 +139,7 @@ bool read_defaults() {
 
     read_eeprom_string(0x70, imu_link_ptr);
     read_eeprom_string(0x80, mag_link_ptr);
+    read_eeprom_int(0xA0, p_publish_mag);
 
     p_GYRO_BIAS[0] = read_eeprom_float(0x90);
     p_GYRO_BIAS[1] = read_eeprom_float(0x94);
@@ -195,6 +197,8 @@ bool write_defaults() {
     write_eeprom_float(0x90, p_GYRO_BIAS[0]);
     write_eeprom_float(0x94, p_GYRO_BIAS[1]);
     write_eeprom_float(0x98, p_GYRO_BIAS[2]);
+
+    write_eeprom_int(0xA0, p_publish_mag);
 
     return true;
 
@@ -358,6 +362,10 @@ void print_parameters(ros::NodeHandle &nh) {
     nh.loginfo(loginfo_buffer);
     spin_once(nh);
 
+    sprintf(loginfo_buffer, "publish_mag: %d", p_publish_mag);
+    nh.loginfo(loginfo_buffer);
+
+
 }
 
 tParameterResult handle_parameters(ros::NodeHandle &nh) {
@@ -494,6 +502,9 @@ tParameterResult handle_parameters(ros::NodeHandle &nh) {
             parameters[31] = nh.getParam("/params/imu/gyro_bias_y", (float*) &p_GYRO_BIAS[1]);
             spin_once(nh);
             parameters[32] = nh.getParam("/params/imu/gyro_bias_z", (float*) &p_GYRO_BIAS[2]);
+            spin_once(nh);
+
+            parameters[30] = nh.getParam("/params/imu/publish_mag", (int*) &p_publish_mag, 1, 1000);
             spin_once(nh);
 
             for(int i=0; i<PARAM_SIZE; i++) {
