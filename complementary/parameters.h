@@ -2,7 +2,7 @@
 #define PARAMETERS_H
 
 #define HW_VERSION_CODE FXIMU2C
-#define PARAM_SIZE 33
+#define PARAM_SIZE 34
 
 #include <stdio.h>
 
@@ -504,7 +504,7 @@ tParameterResult handle_parameters(ros::NodeHandle &nh) {
             parameters[32] = nh.getParam("/params/imu/gyro_bias_z", (float*) &p_GYRO_BIAS[2]);
             spin_once(nh);
 
-            parameters[30] = nh.getParam("/params/imu/publish_mag", (int*) &p_publish_mag, 1, 1000);
+            parameters[33] = nh.getParam("/params/imu/publish_mag", (int*) &p_publish_mag, 1, 1000);
             spin_once(nh);
 
             for(int i=0; i<PARAM_SIZE; i++) {
